@@ -51,25 +51,42 @@ to compute distances between 2 sets of samples.
 import numpy as np
 import pandas as pd
 
-from sklearn.base import BaseEstimator
-from sklearn.base import ClassifierMixin
-
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.model_selection import BaseCrossValidator
-
-from sklearn.utils.validation import check_is_fitted
-from sklearn.utils.validation import validate_data
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.metrics.pairwise import pairwise_distances
 from sklearn.utils.multiclass import type_of_target
 
 
 class KNearestNeighbors(ClassifierMixin, BaseEstimator):
-    """KNearestNeighbors classifier."""
+    """K-nearest neighbors classifier.
+
+    This classifier predicts the label of a sample based on the majority
+    label among its k nearest neighbors in the training set, using the
+    Euclidean distance.
+    """
 
     def __init__(self, n_neighbors=1):  # noqa: D107
         self.n_neighbors = n_neighbors
 
     def fit(self, X, y):
-        """Fit the KNearestNeighbors classifier."""
+        """Fit the KNearestNeighbors classifier.
+
+        This method stores the training data and checks that the target
+        corresponds to a classification task.
+
+        Parameters
+        ----------
+        X : ndarray of shape (n_samples, n_features)
+            Training data.
+        y : ndarray of shape (n_samples,)
+            Target labels.
+
+        Returns
+        -------
+        self : KNearestNeighbors
+            Fitted estimator.
+        """
         X, y = validate_data(self, X, y)
 
         target_type = type_of_target(y)
@@ -93,7 +110,8 @@ class KNearestNeighbors(ClassifierMixin, BaseEstimator):
         Returns
         -------
         y_pred : ndarray of shape (n_test_samples,)
-            Predicted class labels."""
+            Predicted class labels.
+        """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
 
@@ -108,7 +126,8 @@ class KNearestNeighbors(ClassifierMixin, BaseEstimator):
         return np.apply_along_axis(
             majority_vote,
             axis=1,
-            arr=neighbors_labels)
+            arr=neighbors_labels,
+        )
 
     def score(self, X, y):
         """Return the mean accuracy on the given test data and labels.
@@ -123,20 +142,40 @@ class KNearestNeighbors(ClassifierMixin, BaseEstimator):
         Returns
         -------
         score : float
-            Mean accuracy of self.predict(X) with respect to y.
+            Mean accuracy of the classifier.
         """
         X, y = validate_data(self, X, y, reset=False)
         return np.mean(self.predict(X) == y)
 
 
 class MonthlySplit(BaseCrossValidator):
-    """CrossValidator based on monthly split."""
+    """Monthly time-based cross-validator.
+
+    This cross-validator generates train/test splits based on successive
+    months. For each split, the training set contains all samples from one
+    month and the test set contains all samples from the following month.
+    """
 
     def __init__(self, time_col="index"):  # noqa: D107
         self.time_col = time_col
 
     def get_n_splits(self, X, y=None, groups=None):
-        """Return the number of splitting iterations."""
+        """Return the number of splitting iterations.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Input data.
+        y : array-like of shape (n_samples,), optional
+            Always ignored.
+        groups : array-like of shape (n_samples,), optional
+            Always ignored.
+
+        Returns
+        -------
+        n_splits : int
+            Number of train/test splits.
+        """
         X = X if hasattr(X, "index") else pd.DataFrame(X)
 
         if self.time_col == "index":
@@ -156,7 +195,24 @@ class MonthlySplit(BaseCrossValidator):
         return max(len(unique_months) - 1, 0)
 
     def split(self, X, y=None, groups=None):
-        """Generate indices to split data into training and test set."""
+        """Generate indices to split data into training and test set.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Input data.
+        y : array-like of shape (n_samples,), optional
+            Always ignored.
+        groups : array-like of shape (n_samples,), optional
+            Always ignored.
+
+        Yields
+        ------
+        idx_train : ndarray
+            Indices of the training samples.
+        idx_test : ndarray
+            Indices of the testing samples.
+        """
         X = X if hasattr(X, "index") else pd.DataFrame(X)
 
         if self.time_col == "index":
